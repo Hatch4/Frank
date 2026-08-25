@@ -158,13 +158,11 @@ function update() {
         gameStartedClimbing = true;
     }
 
-    // === CAMERA FIX ===
-    cameraY = player.y - 300;
+    // === CAMERA FIX (smooth scrolling) ===
+    cameraY += (player.y - 300 - cameraY) * 0.1;
 
-    // Prevent camera from going below ground
+    // Clamp camera
     cameraY = Math.min(cameraY, 0);
-
-    // Prevent camera from going too far up
     cameraY = Math.max(cameraY, -800);
 
     // Player movement
@@ -284,15 +282,15 @@ function resetGame() {
 
 // === DRAW ===
 function draw() {
+
+    // Background
     ctx.drawImage(bgImg, 0, -cameraY, canvas.width, canvas.height);
 
     // Platforms
     ctx.fillStyle = "#8B4513";
-    platforms.forEach(p => ctx.fillRect(p.x, p.y - cameraY, p.w, p.h));
-
-    // FLAG AT TRUE TOP
-    const top = getTopPlatform();
-    ctx.drawImage(flagImg, top.x + 20, top.y - cameraY - 60, 60, 60);
+    platforms.forEach(p => {
+        ctx.fillRect(p.x, p.y - cameraY, p.w, p.h);
+    });
 
     // Power-ups
     ctx.fillStyle = "yellow";
@@ -305,12 +303,19 @@ function draw() {
         ctx.stroke();
     });
 
+    // Flag
+    const top = getTopPlatform();
+    ctx.drawImage(flagImg, top.x + 20, top.y - cameraY - 60, 60, 60);
+
     // Player
     ctx.drawImage(player.sprite, player.x, player.y - cameraY, player.w, player.h);
 
     // Turtle
     ctx.save();
-    ctx.translate(turtle.x + turtle.w / 2, turtle.y - cameraY + turtle.h / 2);
+    ctx.translate(
+        turtle.x + turtle.w / 2,
+        turtle.y - cameraY + turtle.h / 2
+    );
     ctx.rotate(turtle.collapseAngle);
     const tImg = turtle.exhausted ? turtleExhaustedImg : turtleImg;
     ctx.drawImage(tImg, -turtle.w / 2, -turtle.h / 2, turtle.w, turtle.h);
