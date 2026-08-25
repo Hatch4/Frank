@@ -70,13 +70,12 @@ function init(character) {
         w: 90,
         h: 90,
         vy: 0,
-        jumpPower: -10, // slightly weaker for safe climbing
+        jumpPower: -10,
         speed: getTurtleSpeed(),
         exhausted: retryCount >= 5,
         collapseAngle: 0,
         grounded: false,
-        targetPlatform: null,
-        stuckTimer: 0
+        targetPlatform: null
     };
 
     leftPressed = false;
@@ -91,7 +90,7 @@ function init(character) {
 
 // === TURTLE SPEED ===
 function getTurtleSpeed() {
-    return Math.max(1, 3 - retryCount * 0.4); // slower, safer
+    return Math.max(1, 4 - retryCount * 0.5);
 }
 
 // === PLATFORM GENERATION ===
@@ -114,13 +113,13 @@ function generatePlatforms() {
     platforms.push({ x: 0, y: 690, w: 500, h: 20 }); // ground
 }
 
-// === FLAG OBJECT ===
+// === FLAG OBJECT — REACHABLE HEIGHT ===
 function generateFlag() {
     const top = getTopPlatform();
 
     flag = {
         x: top.x + 20,
-        y: top.y - 200,
+        y: top.y - 80,   // reachable height
         w: 60,
         h: 60
     };
@@ -131,17 +130,14 @@ function getTopPlatform() {
     return platforms.reduce((highest, p) => p.y < highest.y ? p : highest);
 }
 
-// === SAFE TURTLE TARGETING ===
-function getSafeNextPlatform(turtleY) {
-    // Find platforms slightly above turtle
-    let candidates = platforms.filter(p => p.y < turtleY - 20);
-
-    if (candidates.length === 0) return null;
-
-    // Choose the CLOSEST platform above (safe climbing)
-    return candidates.reduce((closest, p) =>
-        Math.abs(p.y - turtleY) < Math.abs(closest.y - turtleY) ? p : closest
-    );
+// === TURTLE TARGETING — ONLY REACHABLE PLATFORMS ===
+function getReachablePlatform(turtleY) {
+    return platforms.filter(p =>
+        p.y < turtleY - 20 &&
+        turtleY - p.y <= 120   // within jump range
+    ).reduce((closest, p) =>
+        p.y > closest.y ? p : closest
+    , { y: -9999 });
 }
 
 // === POWER-UPS ===
@@ -202,30 +198,16 @@ function update() {
         }
     }
 
-    // === SAFE TURTLE AI ===
+    // === TURTLE AI — REACHABLE TARGETS ONLY ===
 
-    // 1. If turtle has no target, pick nearest safe platform
     if (!turtle.targetPlatform) {
-        turtle.targetPlatform = getSafeNextPlatform(turtle.y);
+        turtle.targetPlatform = getReachablePlatform(turtle.y);
     }
 
-    // 2. If turtle fell BELOW its target, pick a new one
     if (turtle.targetPlatform && turtle.y > turtle.targetPlatform.y + 60) {
-        turtle.targetPlatform = getSafeNextPlatform(turtle.y);
+        turtle.targetPlatform = getReachablePlatform(turtle.y);
     }
 
-    // 3. If turtle is stuck for a long time, retarget
-    if (!turtle.grounded && Math.abs(turtle.vy) < 0.1) {
-        turtle.stuckTimer++;
-        if (turtle.stuckTimer > 30) {
-            turtle.targetPlatform = getSafeNextPlatform(turtle.y);
-            turtle.stuckTimer = 0;
-        }
-    } else {
-        turtle.stuckTimer = 0;
-    }
-
-    // 4. Move turtle toward center of target platform
     if (!turtle.exhausted && turtle.targetPlatform) {
         const center = turtle.targetPlatform.x + turtle.targetPlatform.w / 2;
         const tCenter = turtle.x + turtle.w / 2;
@@ -233,7 +215,6 @@ function update() {
         if (tCenter < center - 5) turtle.x += turtle.speed;
         else if (tCenter > center + 5) turtle.x -= turtle.speed;
 
-        // 5. Jump ONLY when perfectly centered
         if (Math.abs(center - tCenter) < 10 && turtle.grounded) {
             turtle.vy = turtle.jumpPower;
             turtle.grounded = false;
@@ -274,7 +255,7 @@ function update() {
             turtle.vy = 0;
             turtle.grounded = true;
 
-            turtle.targetPlatform = getSafeNextPlatform(turtle.y);
+            turtle.targetPlatform = getReachablePlatform(turtle.y);
         }
     });
 
