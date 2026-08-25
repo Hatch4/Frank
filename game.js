@@ -12,6 +12,7 @@ const boyImg = new Image(); boyImg.src = "boy.png";
 const girlImg = new Image(); girlImg.src = "girl.png";
 const turtleImg = new Image(); turtleImg.src = "turtle.png";
 const turtleExhaustedImg = new Image(); turtleExhaustedImg.src = "turtle_exhausted.png";
+const flagImg = new Image(); flagImg.src = "flag.png";
 
 // === SOUNDS ===
 const jumpSound = new Audio("jump.wav");
@@ -71,7 +72,8 @@ function init(character) {
         speed: getTurtleSpeed(),
         exhausted: retryCount >= 5,
         collapseAngle: 0,
-        grounded: false
+        grounded: false,
+        targetIndex: 1
     };
 
     generatePlatforms();
@@ -80,24 +82,24 @@ function init(character) {
 
 // === TURTLE DIFFICULTY ===
 function getTurtleSpeed() {
-    if (retryCount === 0) return 4;   // hardest
+    if (retryCount === 0) return 4;
     if (retryCount === 1) return 3.5;
     if (retryCount === 2) return 3;
     if (retryCount === 3) return 2.5;
     if (retryCount === 4) return 2;
-    return 1; // easiest
+    return 1;
 }
 
-// === PLATFORM GENERATION (REACHABLE + TALL LEVEL) ===
+// === PLATFORM GENERATION ===
 function generatePlatforms() {
     platforms = [];
 
     let x = 200;
     let y = 650;
-    const stepY = 50;     // reachable height
+    const stepY = 50;
     const maxShift = 120;
 
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 20; i++) {
         x += (Math.random() * maxShift * 2) - maxShift;
         x = Math.max(20, Math.min(380, x));
 
@@ -164,16 +166,9 @@ function update() {
         }
     }
 
-    // Turtle AI: find the NEXT platform above
-    let next = null;
-    for (let p of platforms) {
-        if (p.y < turtle.y - 10) {
-            next = p;
-            break;
-        }
-    }
+    // Turtle AI: target next platform in staircase
+    let next = platforms[turtle.targetIndex];
 
-    // Turtle horizontal movement
     if (!turtle.exhausted && next) {
         const center = next.x + next.w / 2;
         const tCenter = turtle.x + turtle.w / 2;
@@ -216,7 +211,7 @@ function update() {
     // PLATFORM COLLISION (TURTLE)
     turtle.grounded = false;
 
-    platforms.forEach(p => {
+    platforms.forEach((p, index) => {
         const turtleOnPlatform =
             turtle.x + turtle.w > p.x &&
             turtle.x < p.x + p.w &&
@@ -228,6 +223,8 @@ function update() {
             turtle.y = p.y - turtle.h;
             turtle.vy = 0;
             turtle.grounded = true;
+
+            turtle.targetIndex = index - 1; // next platform above
         }
     });
 
@@ -246,15 +243,15 @@ function update() {
     });
 
     // WIN / LOSE CONDITIONS
-    const highestPlatform = platforms[0].y;
+    const topPlatform = platforms[0];
 
-    if (player.y < highestPlatform - 200) {
+    if (player.y < topPlatform.y + 50) {
         winSound.play();
         alert("You reached the top!");
         resetGame();
     }
 
-    if (turtle.y < highestPlatform - 200 && !turtle.exhausted) {
+    if (turtle.y < topPlatform.y + 50 && !turtle.exhausted) {
         loseSound.play();
         retryCount++;
         alert("The turtle won the race!");
@@ -282,6 +279,10 @@ function draw() {
     // Platforms
     ctx.fillStyle = "#8B4513";
     platforms.forEach(p => ctx.fillRect(p.x, p.y - cameraY, p.w, p.h));
+
+    // Flag at top
+    const top = platforms[0];
+    ctx.drawImage(flagImg, top.x + 20, top.y - cameraY - 60, 60, 60);
 
     // Power-ups
     ctx.fillStyle = "yellow";
