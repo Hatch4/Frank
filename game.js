@@ -164,9 +164,10 @@ function update() {
     }
 
     // === CAMERA (smooth scrolling, no streaking) ===
-    cameraY += (player.y - 300 - cameraY) * 0.1;
+    cameraY = player.y - 300;
     cameraY = Math.min(cameraY, 0);
     cameraY = Math.max(cameraY, -800);
+
 
     // Player movement
     if (player.grounded) {
