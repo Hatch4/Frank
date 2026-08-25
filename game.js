@@ -71,7 +71,7 @@ function init(character) {
         h: 90,
         vy: 0,
         jumpPower: -10,
-        speed: getTurtleSpeed(),
+        speed: Math.max(1, 3 - retryCount * 0.4),
         exhausted: retryCount >= 5,
         collapseAngle: 0,
         grounded: false,
@@ -86,11 +86,6 @@ function init(character) {
     generateFlag();
 
     cameraY = 0;
-}
-
-// === TURTLE SPEED ===
-function getTurtleSpeed() {
-    return Math.max(1, 4 - retryCount * 0.5);
 }
 
 // === PLATFORM GENERATION ===
@@ -130,14 +125,28 @@ function getTopPlatform() {
     return platforms.reduce((highest, p) => p.y < highest.y ? p : highest);
 }
 
-// === TURTLE TARGETING — ONLY REACHABLE PLATFORMS ===
-function getReachablePlatform(turtleY) {
-    return platforms.filter(p =>
-        p.y < turtleY - 20 &&
-        turtleY - p.y <= 120   // within jump range
-    ).reduce((closest, p) =>
+// === TURTLE TARGETING — VERTICAL + HORIZONTAL REACH ===
+function getReachablePlatform(turtle) {
+    const tCenter = turtle.x + turtle.w / 2;
+
+    let candidates = platforms.filter(p => {
+        const pCenter = p.x + p.w / 2;
+        const verticalReach = turtle.y - p.y <= 120;
+        const horizontalReach = Math.abs(pCenter - tCenter) <= 80;
+
+        return (
+            p.y < turtle.y - 20 &&   // above turtle
+            verticalReach &&
+            horizontalReach
+        );
+    });
+
+    if (candidates.length === 0) return null;
+
+    // Choose the closest platform above
+    return candidates.reduce((closest, p) =>
         p.y > closest.y ? p : closest
-    , { y: -9999 });
+    );
 }
 
 // === POWER-UPS ===
@@ -198,16 +207,19 @@ function update() {
         }
     }
 
-    // === TURTLE AI — REACHABLE TARGETS ONLY ===
+    // === TURTLE AI — FINAL FIX ===
 
+    // Pick target if none
     if (!turtle.targetPlatform) {
-        turtle.targetPlatform = getReachablePlatform(turtle.y);
+        turtle.targetPlatform = getReachablePlatform(turtle);
     }
 
+    // If turtle fell below target, retarget
     if (turtle.targetPlatform && turtle.y > turtle.targetPlatform.y + 60) {
-        turtle.targetPlatform = getReachablePlatform(turtle.y);
+        turtle.targetPlatform = getReachablePlatform(turtle);
     }
 
+    // Move toward target
     if (!turtle.exhausted && turtle.targetPlatform) {
         const center = turtle.targetPlatform.x + turtle.targetPlatform.w / 2;
         const tCenter = turtle.x + turtle.w / 2;
@@ -215,6 +227,7 @@ function update() {
         if (tCenter < center - 5) turtle.x += turtle.speed;
         else if (tCenter > center + 5) turtle.x -= turtle.speed;
 
+        // Jump only when centered
         if (Math.abs(center - tCenter) < 10 && turtle.grounded) {
             turtle.vy = turtle.jumpPower;
             turtle.grounded = false;
@@ -255,7 +268,7 @@ function update() {
             turtle.vy = 0;
             turtle.grounded = true;
 
-            turtle.targetPlatform = getReachablePlatform(turtle.y);
+            turtle.targetPlatform = getReachablePlatform(turtle);
         }
     });
 
