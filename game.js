@@ -5,6 +5,7 @@ let player, turtle, platforms = [], powerUps = [];
 let retryCount = 0;
 let gameRunning = false;
 let cameraY = 0;
+let gameStartedClimbing = false; // ⭐ prevents instant win
 
 // === IMAGES ===
 const bgImg = new Image(); bgImg.src = "background.png";
@@ -51,6 +52,8 @@ function startGame(character) {
 
 // === INITIALIZE GAME ===
 function init(character) {
+    gameStartedClimbing = false; // reset
+
     player = {
         x: 250,
         y: 600,
@@ -73,7 +76,7 @@ function init(character) {
         exhausted: retryCount >= 5,
         collapseAngle: 0,
         grounded: false,
-        targetIndex: 1 // first platform above ground
+        targetIndex: 1
     };
 
     generatePlatforms();
@@ -116,7 +119,7 @@ function generatePlatforms() {
     // Ground platform
     platforms.push({ x: 0, y: 690, w: 500, h: 20 });
 
-    // Reverse so index 0 = ground, last = top
+    // ⭐ Reverse so index 0 = ground, last = top
     platforms.reverse();
 }
 
@@ -151,6 +154,11 @@ function update() {
 
     turtle.vy += 0.5;
     turtle.y += turtle.vy;
+
+    // ⭐ Only start win checks after climbing begins
+    if (!gameStartedClimbing && player.y < 500) {
+        gameStartedClimbing = true;
+    }
 
     // Camera follows player smoothly
     cameraY = player.y - 300;
@@ -228,7 +236,7 @@ function update() {
             turtle.vy = 0;
             turtle.grounded = true;
 
-            // Move UP the staircase (toward top)
+            // Move UP the staircase
             if (index < platforms.length - 1) {
                 turtle.targetIndex = index + 1;
             }
@@ -252,13 +260,13 @@ function update() {
     // WIN / LOSE CONDITIONS
     const topPlatform = platforms[platforms.length - 1]; // true top
 
-    if (player.y < topPlatform.y + 50) {
+    if (gameStartedClimbing && player.y < topPlatform.y + 50) {
         winSound.play();
         alert("You reached the top!");
         resetGame();
     }
 
-    if (turtle.y < topPlatform.y + 50 && !turtle.exhausted) {
+    if (gameStartedClimbing && turtle.y < topPlatform.y + 50 && !turtle.exhausted) {
         loseSound.play();
         retryCount++;
         alert("The turtle won the race!");
