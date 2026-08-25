@@ -9,7 +9,7 @@ let gameStartedClimbing = false;
 
 // === IMAGES ===
 const bgImg = new Image(); bgImg.src = "background.png";
-const nightImg = new Image(); nightImg.src = "night.png"; // Your uploaded night sky
+const nightImg = new Image(); nightImg.src = "night.png";
 const boyImg = new Image(); boyImg.src = "boy.png";
 const girlImg = new Image(); girlImg.src = "girl.png";
 const turtleImg = new Image(); turtleImg.src = "turtle.png";
@@ -70,7 +70,7 @@ function init(character) {
         w: 90,
         h: 90,
         vy: 0,
-        jumpPower: -11, // Turtle now reaches top reliably
+        jumpPower: -11,
         speed: getTurtleSpeed(),
         exhausted: retryCount >= 5,
         collapseAngle: 0,
@@ -166,8 +166,11 @@ function update() {
 
     // === INSTANT CAMERA (UPWARD ONLY) ===
     cameraY = player.y - 300;
+
     if (cameraY > 0) cameraY = 0;
-    if (cameraY < -1000) cameraY = -1000;
+
+    // ⭐ EXTENDED CAMERA CLAMP — FIXES EARLY WIN
+    if (cameraY < -2000) cameraY = -2000;
 
     // Player movement
     if (player.grounded) {
