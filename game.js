@@ -57,8 +57,6 @@ function init(character) {
         vy: 0,
         jumpPower: -15,
         sprite: character === "boy" ? boyImg : girlImg,
-        speedBoost: 0,
-        boostTimer: 0,
         grounded: false
     };
 
@@ -67,9 +65,12 @@ function init(character) {
         y: 600,
         w: 90,
         h: 90,
+        vy: 0,
+        jumpPower: -12,
         speed: getTurtleSpeed(),
         exhausted: retryCount >= 5,
-        collapseAngle: 0
+        collapseAngle: 0,
+        grounded: false
     };
 
     generatePlatforms();
@@ -132,34 +133,61 @@ function update() {
     player.vy += 0.5;
     player.y += player.vy;
 
-    // Horizontal movement + directional jump
-    if (leftPressed && player.grounded) {
-        player.vy = player.jumpPower;
-        player.x -= 20;
-        jumpSound.play();
+    turtle.vy += 0.5;
+    turtle.y += turtle.vy;
+
+    // Directional jump (player)
+    if (player.grounded) {
+        if (leftPressed) {
+            player.vy = player.jumpPower;
+            player.x -= 20;
+            jumpSound.play();
+        }
+        if (rightPressed) {
+            player.vy = player.jumpPower;
+            player.x += 20;
+            jumpSound.play();
+        }
     }
 
-    if (rightPressed && player.grounded) {
-        player.vy = player.jumpPower;
-        player.x += 20;
-        jumpSound.play();
+    // Turtle AI jump
+    if (turtle.grounded && !turtle.exhausted) {
+        turtle.vy = turtle.jumpPower;
     }
 
-    // PLATFORM COLLISION
+    // PLATFORM COLLISION (PLAYER)
     player.grounded = false;
 
     platforms.forEach(p => {
         const onPlatform =
-            player.y + player.h >= p.y &&
-            player.y + player.h <= p.y + 10 &&
             player.x + player.w > p.x &&
             player.x < p.x + p.w &&
-            player.vy > 0;
+            player.y + player.h >= p.y &&
+            player.y + player.h <= p.y + 10 &&
+            player.vy >= 0;
 
         if (onPlatform) {
             player.y = p.y - player.h;
             player.vy = 0;
             player.grounded = true;
+        }
+    });
+
+    // PLATFORM COLLISION (TURTLE)
+    turtle.grounded = false;
+
+    platforms.forEach(p => {
+        const turtleOnPlatform =
+            turtle.x + turtle.w > p.x &&
+            turtle.x < p.x + p.w &&
+            turtle.y + turtle.h >= p.y &&
+            turtle.y + turtle.h <= p.y + 10 &&
+            turtle.vy >= 0;
+
+        if (turtleOnPlatform) {
+            turtle.y = p.y - turtle.h;
+            turtle.vy = 0;
+            turtle.grounded = true;
         }
     });
 
@@ -170,20 +198,12 @@ function update() {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist < pu.r + 30) {
-            player.speedBoost = -4;
-            player.boostTimer = 300;
+            player.jumpPower -= 3;
             powerSound.play();
             return false;
         }
         return true;
     });
-
-    // TURTLE AI
-    if (!turtle.exhausted) {
-        turtle.y -= turtle.speed;
-    } else if (turtle.collapseAngle < Math.PI / 1.3) {
-        turtle.collapseAngle += 0.04;
-    }
 
     // WIN / LOSE CONDITIONS
     if (player.y < 50) {
