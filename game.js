@@ -158,9 +158,14 @@ function update() {
         gameStartedClimbing = true;
     }
 
-    // Camera
+    // === CAMERA FIX ===
     cameraY = player.y - 300;
-    if (cameraY < 0) cameraY = 0;
+
+    // Prevent camera from going below ground
+    cameraY = Math.min(cameraY, 0);
+
+    // Prevent camera from going too far up
+    cameraY = Math.max(cameraY, -800);
 
     // Player movement
     if (player.grounded) {
