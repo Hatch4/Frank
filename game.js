@@ -73,7 +73,7 @@ function init(character) {
         exhausted: retryCount >= 5,
         collapseAngle: 0,
         grounded: false,
-        targetIndex: 0 // will be set after platforms generate
+        targetIndex: 0
     };
 
     generatePlatforms();
@@ -250,7 +250,7 @@ function update() {
     });
 
     // WIN / LOSE CONDITIONS
-    const topPlatform = platforms[platforms.length - 2];
+    const topPlatform = platforms[0]; // TRUE TOP
 
     if (player.y < topPlatform.y + 50) {
         winSound.play();
@@ -288,7 +288,7 @@ function draw() {
     platforms.forEach(p => ctx.fillRect(p.x, p.y - cameraY, p.w, p.h));
 
     // Flag at top
-    const top = platforms[platforms.length - 2];
+    const top = platforms[0];
     ctx.drawImage(flagImg, top.x + 20, top.y - cameraY - 60, 60, 60);
 
     // Power-ups
