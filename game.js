@@ -9,6 +9,7 @@ let gameStartedClimbing = false;
 
 // === IMAGES ===
 const bgImg = new Image(); bgImg.src = "background.png";
+const nightImg = new Image(); nightImg.src = "night.png"; // <-- Add your night sky image here
 const boyImg = new Image(); boyImg.src = "boy.png";
 const girlImg = new Image(); girlImg.src = "girl.png";
 const turtleImg = new Image(); turtleImg.src = "turtle.png";
@@ -69,7 +70,7 @@ function init(character) {
         w: 90,
         h: 90,
         vy: 0,
-        jumpPower: -9,
+        jumpPower: -11, // <-- Turtle now reaches the top
         speed: getTurtleSpeed(),
         exhausted: retryCount >= 5,
         collapseAngle: 0,
@@ -256,22 +257,27 @@ function update() {
         return true;
     });
 
-    // WIN / LOSE CONDITIONS
+    // === FIXED WIN CONDITION (SCREEN-RELATIVE) ===
     const topPlatform = getTopPlatform();
+    const playerScreenY = player.y - cameraY;
+    const topScreenY = topPlatform.y - cameraY;
 
-    if (gameStartedClimbing && player.y < topPlatform.y + 50) {
+    if (gameStartedClimbing && playerScreenY < topScreenY + 50) {
         winSound.play();
         alert("You reached the top!");
         resetGame();
     }
 
-    if (gameStartedClimbing && turtle.y < topPlatform.y + 50 && !turtle.exhausted) {
+    // TURTLE WIN
+    const turtleScreenY = turtle.y - cameraY;
+    if (gameStartedClimbing && turtleScreenY < topScreenY + 50 && !turtle.exhausted) {
         loseSound.play();
         retryCount++;
         alert("The turtle won the race!");
         resetGame();
     }
 
+    // FALL LOSE
     if (player.y > 700) {
         retryCount++;
         loseSound.play();
@@ -301,10 +307,13 @@ function resetGame() {
 // === DRAW ===
 function draw() {
 
-    // CLEAR THE CANVAS FIRST
+    // CLEAR CANVAS
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Background
+    // === NIGHT SKY ABOVE MAIN BACKGROUND ===
+    ctx.drawImage(nightImg, 0, -cameraY - canvas.height, canvas.width, canvas.height);
+
+    // === MAIN BACKGROUND ===
     ctx.drawImage(bgImg, 0, -cameraY, canvas.width, canvas.height);
 
     // Platforms
