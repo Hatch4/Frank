@@ -4,6 +4,7 @@ const ctx = canvas.getContext("2d");
 let player, turtle, platforms = [], powerUps = [];
 let retryCount = 0;
 let gameRunning = false;
+let cameraY = 0;
 
 // === IMAGES ===
 const bgImg = new Image(); bgImg.src = "background.png";
@@ -55,7 +56,7 @@ function init(character) {
         w: 80,
         h: 80,
         vy: 0,
-        jumpPower: -8,   // balanced jump height
+        jumpPower: -8,
         sprite: character === "boy" ? boyImg : girlImg,
         grounded: false
     };
@@ -93,10 +94,10 @@ function generatePlatforms() {
 
     let x = 200;
     let y = 650;
-    const stepY = 80;
+    const stepY = 60;     // reachable height
     const maxShift = 120;
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 40; i++) {  // DOUBLE HEIGHT
         x += (Math.random() * maxShift * 2) - maxShift;
         x = Math.max(20, Math.min(380, x));
 
@@ -117,7 +118,7 @@ function generatePlatforms() {
 function generatePowerUps() {
     powerUps = [];
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 6; i++) {
         powerUps.push({
             x: Math.random() * 420 + 40,
             y: 700 - (i * 200 + 150),
@@ -144,6 +145,9 @@ function update() {
 
     turtle.vy += 0.5;
     turtle.y += turtle.vy;
+
+    // Camera follows player
+    cameraY = Math.min(player.y - 300, 0);
 
     // Directional jump (player)
     if (player.grounded) {
@@ -234,13 +238,13 @@ function update() {
     });
 
     // WIN / LOSE CONDITIONS
-    if (player.y < 50) {
+    if (player.y < -2000) {
         winSound.play();
-        alert("You reached the top first!");
+        alert("You reached the top!");
         resetGame();
     }
 
-    if (turtle.y < 50 && !turtle.exhausted) {
+    if (turtle.y < -2000 && !turtle.exhausted) {
         loseSound.play();
         retryCount++;
         alert("The turtle won the race!");
@@ -263,17 +267,17 @@ function resetGame() {
 
 // === DRAW EVERYTHING ===
 function draw() {
-    ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bgImg, 0, -cameraY, canvas.width, canvas.height);
 
     // Platforms
     ctx.fillStyle = "#8B4513";
-    platforms.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
+    platforms.forEach(p => ctx.fillRect(p.x, p.y - cameraY, p.w, p.h));
 
     // Power-ups
     ctx.fillStyle = "yellow";
     powerUps.forEach(pu => {
         ctx.beginPath();
-        ctx.arc(pu.x, pu.y, pu.r, 0, Math.PI * 2);
+        ctx.arc(pu.x, pu.y - cameraY, pu.r, 0, Math.PI * 2);
         ctx.fill();
         ctx.lineWidth = 4;
         ctx.strokeStyle = "orange";
@@ -281,11 +285,11 @@ function draw() {
     });
 
     // Player
-    ctx.drawImage(player.sprite, player.x, player.y, player.w, player.h);
+    ctx.drawImage(player.sprite, player.x, player.y - cameraY, player.w, player.h);
 
     // Turtle
     ctx.save();
-    ctx.translate(turtle.x + turtle.w / 2, turtle.y + turtle.h / 2);
+    ctx.translate(turtle.x + turtle.w / 2, turtle.y - cameraY + turtle.h / 2);
     ctx.rotate(turtle.collapseAngle);
     const tImg = turtle.exhausted ? turtleExhaustedImg : turtleImg;
     ctx.drawImage(tImg, -turtle.w / 2, -turtle.h / 2, turtle.w, turtle.h);
