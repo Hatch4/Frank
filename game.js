@@ -70,7 +70,7 @@ function init(character) {
         w: 90,
         h: 90,
         vy: 0,
-        jumpPower: -11,
+        jumpPower: -10, // slightly weaker for safe climbing
         speed: getTurtleSpeed(),
         exhausted: retryCount >= 5,
         collapseAngle: 0,
@@ -91,7 +91,7 @@ function init(character) {
 
 // === TURTLE SPEED ===
 function getTurtleSpeed() {
-    return Math.max(1, 4 - retryCount * 0.5);
+    return Math.max(1, 3 - retryCount * 0.4); // slower, safer
 }
 
 // === PLATFORM GENERATION ===
@@ -131,13 +131,16 @@ function getTopPlatform() {
     return platforms.reduce((highest, p) => p.y < highest.y ? p : highest);
 }
 
-// === FIND NEXT PLATFORM ABOVE TURTLE ===
-function getNextPlatformAbove(turtleY) {
-    let above = platforms.filter(p => p.y < turtleY - 10);
-    if (above.length === 0) return null;
+// === SAFE TURTLE TARGETING ===
+function getSafeNextPlatform(turtleY) {
+    // Find platforms slightly above turtle
+    let candidates = platforms.filter(p => p.y < turtleY - 20);
 
-    return above.reduce((closest, p) =>
-        p.y > closest.y ? p : closest
+    if (candidates.length === 0) return null;
+
+    // Choose the CLOSEST platform above (safe climbing)
+    return candidates.reduce((closest, p) =>
+        Math.abs(p.y - turtleY) < Math.abs(closest.y - turtleY) ? p : closest
     );
 }
 
@@ -199,34 +202,39 @@ function update() {
         }
     }
 
-    // === TURTLE AI FIXES ===
+    // === SAFE TURTLE AI ===
 
-    // 1. If turtle is falling, recalc target platform
-    if (turtle.vy > 0 && !turtle.grounded) {
-        turtle.targetPlatform = getNextPlatformAbove(turtle.y);
+    // 1. If turtle has no target, pick nearest safe platform
+    if (!turtle.targetPlatform) {
+        turtle.targetPlatform = getSafeNextPlatform(turtle.y);
     }
 
-    // 2. If turtle is stuck (not moving), recalc target
-    if (Math.abs(turtle.vy) < 0.1 && !turtle.grounded) {
+    // 2. If turtle fell BELOW its target, pick a new one
+    if (turtle.targetPlatform && turtle.y > turtle.targetPlatform.y + 60) {
+        turtle.targetPlatform = getSafeNextPlatform(turtle.y);
+    }
+
+    // 3. If turtle is stuck for a long time, retarget
+    if (!turtle.grounded && Math.abs(turtle.vy) < 0.1) {
         turtle.stuckTimer++;
-        if (turtle.stuckTimer > 20) {
-            turtle.targetPlatform = getNextPlatformAbove(turtle.y);
+        if (turtle.stuckTimer > 30) {
+            turtle.targetPlatform = getSafeNextPlatform(turtle.y);
             turtle.stuckTimer = 0;
         }
     } else {
         turtle.stuckTimer = 0;
     }
 
-    // 3. Move turtle toward platform center
+    // 4. Move turtle toward center of target platform
     if (!turtle.exhausted && turtle.targetPlatform) {
         const center = turtle.targetPlatform.x + turtle.targetPlatform.w / 2;
         const tCenter = turtle.x + turtle.w / 2;
 
-        if (tCenter < center) turtle.x += turtle.speed;
-        else turtle.x -= turtle.speed;
+        if (tCenter < center - 5) turtle.x += turtle.speed;
+        else if (tCenter > center + 5) turtle.x -= turtle.speed;
 
-        // 4. Wider jump zone for zig-zag layouts
-        if (Math.abs(center - tCenter) < 35 && turtle.grounded) {
+        // 5. Jump ONLY when perfectly centered
+        if (Math.abs(center - tCenter) < 10 && turtle.grounded) {
             turtle.vy = turtle.jumpPower;
             turtle.grounded = false;
         }
@@ -266,7 +274,7 @@ function update() {
             turtle.vy = 0;
             turtle.grounded = true;
 
-            turtle.targetPlatform = getNextPlatformAbove(turtle.y);
+            turtle.targetPlatform = getSafeNextPlatform(turtle.y);
         }
     });
 
@@ -333,22 +341,16 @@ function resetGame() {
 // === DRAW ===
 function draw() {
 
-    // CLEAR CANVAS
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // NIGHT SKY
     ctx.drawImage(nightImg, 0, -cameraY - canvas.height, canvas.width, canvas.height);
-
-    // MAIN BACKGROUND
     ctx.drawImage(bgImg, 0, -cameraY, canvas.width, canvas.height);
 
-    // PLATFORMS
     ctx.fillStyle = "#8B4513";
     platforms.forEach(p => {
         ctx.fillRect(p.x, p.y - cameraY, p.w, p.h);
     });
 
-    // POWER-UPS
     ctx.fillStyle = "yellow";
     powerUps.forEach(pu => {
         ctx.beginPath();
@@ -359,13 +361,10 @@ function draw() {
         ctx.stroke();
     });
 
-    // FLAG
     ctx.drawImage(flagImg, flag.x, flag.y - cameraY, flag.w, flag.h);
 
-    // PLAYER
     ctx.drawImage(player.sprite, player.x, player.y - cameraY, player.w, player.h);
 
-    // TURTLE
     ctx.save();
     ctx.translate(
         turtle.x + turtle.w / 2,
