@@ -55,7 +55,7 @@ function init(character) {
         w: 80,
         h: 80,
         vy: 0,
-        jumpPower: -10,   // LOWER JUMP FOR MOBILE
+        jumpPower: -8,   // balanced jump height
         sprite: character === "boy" ? boyImg : girlImg,
         grounded: false
     };
@@ -66,7 +66,7 @@ function init(character) {
         w: 90,
         h: 90,
         vy: 0,
-        jumpPower: -8,    // LOWER JUMP FOR MOBILE
+        jumpPower: -8,
         speed: getTurtleSpeed(),
         exhausted: retryCount >= 5,
         collapseAngle: 0,
@@ -87,20 +87,29 @@ function getTurtleSpeed() {
     return 0;
 }
 
-// === PLATFORM GENERATION ===
+// === PLATFORM GENERATION (STAIRCASE PATTERN) ===
 function generatePlatforms() {
     platforms = [];
 
+    let x = 200;
+    let y = 650;
+    const stepY = 80;
+    const maxShift = 120;
+
     for (let i = 0; i < 20; i++) {
+        x += (Math.random() * maxShift * 2) - maxShift;
+        x = Math.max(20, Math.min(380, x));
+
         platforms.push({
-            x: Math.random() * 420 + 40,
-            y: 700 - i * 80,
+            x: x,
+            y: y,
             w: 100,
             h: 20
         });
+
+        y -= stepY;
     }
 
-    // Ground floor
     platforms.push({ x: 0, y: 690, w: 500, h: 20 });
 }
 
@@ -150,7 +159,26 @@ function update() {
         }
     }
 
-    // Turtle AI jump
+    // Turtle AI movement toward next platform
+    if (!turtle.exhausted) {
+        let next = null;
+        for (let p of platforms) {
+            if (p.y < turtle.y) {
+                next = p;
+                break;
+            }
+        }
+
+        if (next) {
+            if (turtle.x + turtle.w / 2 < next.x + next.w / 2) {
+                turtle.x += 2;
+            } else {
+                turtle.x -= 2;
+            }
+        }
+    }
+
+    // Turtle jump
     if (turtle.grounded && !turtle.exhausted) {
         turtle.vy = turtle.jumpPower;
     }
