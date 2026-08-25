@@ -1,7 +1,7 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-let player, turtle, platforms = [], powerUps = [];
+let player, turtle, platforms = [], powerUps = [], flag;
 let retryCount = 0;
 let gameRunning = false;
 let cameraY = 0;
@@ -83,6 +83,7 @@ function init(character) {
 
     generatePlatforms();
     generatePowerUps();
+    generateFlag();   // ⭐ NEW FLAG OBJECT
 
     cameraY = 0;
 }
@@ -110,6 +111,18 @@ function generatePlatforms() {
     }
 
     platforms.push({ x: 0, y: 690, w: 500, h: 20 }); // ground
+}
+
+// === FLAG OBJECT (REAL FIX) ===
+function generateFlag() {
+    const top = getTopPlatform();
+
+    flag = {
+        x: top.x + 20,
+        y: top.y - 80,   // ⭐ Flag ABOVE the top platform
+        w: 60,
+        h: 60
+    };
 }
 
 // === FIND TRUE TOP PLATFORM ===
@@ -260,12 +273,11 @@ function update() {
         return true;
     });
 
-    // === FIXED WIN CONDITION (SCREEN-RELATIVE) ===
-    const topPlatform = getTopPlatform();
+    // === FIXED WIN CONDITION — FLAG ONLY ===
     const playerScreenY = player.y - cameraY;
-    const topScreenY = topPlatform.y - cameraY;
+    const flagScreenY = flag.y - cameraY;
 
-    if (gameStartedClimbing && playerScreenY < topScreenY + 50) {
+    if (gameStartedClimbing && playerScreenY < flagScreenY + 50) {
         winSound.play();
         alert("You reached the top!");
         resetGame();
@@ -273,7 +285,7 @@ function update() {
 
     // TURTLE WIN
     const turtleScreenY = turtle.y - cameraY;
-    if (gameStartedClimbing && turtleScreenY < topScreenY + 50 && !turtle.exhausted) {
+    if (gameStartedClimbing && turtleScreenY < flagScreenY + 50 && !turtle.exhausted) {
         loseSound.play();
         retryCount++;
         alert("The turtle won the race!");
@@ -336,9 +348,8 @@ function draw() {
         ctx.stroke();
     });
 
-    // Flag
-    const top = getTopPlatform();
-    ctx.drawImage(flagImg, top.x + 20, top.y - cameraY - 60, 60, 60);
+    // ⭐ DRAW FLAG OBJECT
+    ctx.drawImage(flagImg, flag.x, flag.y - cameraY, flag.w, flag.h);
 
     // Player
     ctx.drawImage(player.sprite, player.x, player.y - cameraY, player.w, player.h);
