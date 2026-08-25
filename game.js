@@ -58,7 +58,7 @@ function init(character) {
         w: 80,
         h: 80,
         vy: 0,
-        jumpPower: -8,
+        jumpPower: -9,      // tuned for ~1 platform (50px)
         sprite: character === "boy" ? boyImg : girlImg,
         grounded: false
     };
@@ -69,7 +69,7 @@ function init(character) {
         w: 90,
         h: 90,
         vy: 0,
-        jumpPower: -8,
+        jumpPower: -9,
         speed: getTurtleSpeed(),
         exhausted: retryCount >= 5,
         collapseAngle: 0,
@@ -77,8 +77,13 @@ function init(character) {
         targetPlatform: null
     };
 
+    leftPressed = false;
+    rightPressed = false;
+
     generatePlatforms();
     generatePowerUps();
+
+    cameraY = 0;
 }
 
 // === TURTLE SPEED ===
@@ -92,7 +97,7 @@ function generatePlatforms() {
 
     let x = 200;
     let y = 650;
-    const stepY = 50;
+    const stepY = 50;      // ~50px gap
     const maxShift = 120;
 
     for (let i = 0; i < 20; i++) {
@@ -146,11 +151,11 @@ function gameLoop() {
 // === UPDATE ===
 function update() {
 
-    // Gravity
-    player.vy += 0.5;
+    // Gravity (slightly stronger for consistent jump)
+    player.vy += 0.6;
     player.y += player.vy;
 
-    turtle.vy += 0.5;
+    turtle.vy += 0.6;
     turtle.y += turtle.vy;
 
     // Start climbing check
@@ -158,10 +163,8 @@ function update() {
         gameStartedClimbing = true;
     }
 
-    // === CAMERA FIX (smooth scrolling) ===
+    // === CAMERA (smooth scrolling, no streaking) ===
     cameraY += (player.y - 300 - cameraY) * 0.1;
-
-    // Clamp camera
     cameraY = Math.min(cameraY, 0);
     cameraY = Math.max(cameraY, -800);
 
@@ -170,11 +173,13 @@ function update() {
         if (leftPressed) {
             player.vy = player.jumpPower;
             player.x -= 20;
+            player.grounded = false;
             jumpSound.play();
         }
         if (rightPressed) {
             player.vy = player.jumpPower;
             player.x += 20;
+            player.grounded = false;
             jumpSound.play();
         }
     }
@@ -194,6 +199,7 @@ function update() {
 
             if (Math.abs(center - tCenter) < 20 && turtle.grounded) {
                 turtle.vy = turtle.jumpPower;
+                turtle.grounded = false;
             }
         }
     }
@@ -243,7 +249,8 @@ function update() {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist < pu.r + 30) {
-            player.jumpPower -= 2;
+            // Slight boost but still controlled
+            player.jumpPower -= 1;
             powerSound.play();
             return false;
         }
@@ -278,6 +285,18 @@ function update() {
 function resetGame() {
     gameRunning = false;
     document.getElementById("menu").style.display = "block";
+
+    // Clear control + physics state to avoid auto-jump
+    leftPressed = false;
+    rightPressed = false;
+    if (player) {
+        player.grounded = false;
+        player.vy = 0;
+    }
+    if (turtle) {
+        turtle.grounded = false;
+        turtle.vy = 0;
+    }
 }
 
 // === DRAW ===
