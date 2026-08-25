@@ -73,11 +73,14 @@ function init(character) {
         exhausted: retryCount >= 5,
         collapseAngle: 0,
         grounded: false,
-        targetIndex: 1
+        targetIndex: 0 // will be set after platforms generate
     };
 
     generatePlatforms();
     generatePowerUps();
+
+    // Turtle starts at the bottom-most platform (just above ground)
+    turtle.targetIndex = platforms.length - 3;
 }
 
 // === TURTLE DIFFICULTY ===
@@ -113,6 +116,7 @@ function generatePlatforms() {
         y -= stepY;
     }
 
+    // Ground platform
     platforms.push({ x: 0, y: 690, w: 500, h: 20 });
 }
 
@@ -224,7 +228,10 @@ function update() {
             turtle.vy = 0;
             turtle.grounded = true;
 
-            turtle.targetIndex = index - 1; // next platform above
+            // Move UP the staircase
+            if (index > 0) {
+                turtle.targetIndex = index - 1;
+            }
         }
     });
 
@@ -243,7 +250,7 @@ function update() {
     });
 
     // WIN / LOSE CONDITIONS
-    const topPlatform = platforms[0];
+    const topPlatform = platforms[platforms.length - 2];
 
     if (player.y < topPlatform.y + 50) {
         winSound.play();
@@ -281,7 +288,7 @@ function draw() {
     platforms.forEach(p => ctx.fillRect(p.x, p.y - cameraY, p.w, p.h));
 
     // Flag at top
-    const top = platforms[0];
+    const top = platforms[platforms.length - 2];
     ctx.drawImage(flagImg, top.x + 20, top.y - cameraY - 60, 60, 60);
 
     // Power-ups
