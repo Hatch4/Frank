@@ -70,12 +70,11 @@ function init(character) {
         w: 90,
         h: 90,
         vy: 0,
-        jumpPower: -10,
         speed: Math.max(1, 3 - retryCount * 0.4),
         exhausted: retryCount >= 5,
-        collapseAngle: 0,
         grounded: false,
-        targetPlatform: null
+        targetPlatform: null,
+        hopTimer: 0
     };
 
     leftPressed = false;
@@ -114,7 +113,7 @@ function generateFlag() {
 
     flag = {
         x: top.x + 20,
-        y: top.y - 80,   // reachable height
+        y: top.y - 80,
         w: 60,
         h: 60
     };
@@ -125,26 +124,12 @@ function getTopPlatform() {
     return platforms.reduce((highest, p) => p.y < highest.y ? p : highest);
 }
 
-// === TURTLE TARGETING — VERTICAL + HORIZONTAL REACH ===
-function getReachablePlatform(turtle) {
-    const tCenter = turtle.x + turtle.w / 2;
+// === TURTLE TARGETING — TELEPORT ASSIST ===
+function getNextPlatformAbove(turtleY) {
+    let above = platforms.filter(p => p.y < turtleY - 20);
+    if (above.length === 0) return null;
 
-    let candidates = platforms.filter(p => {
-        const pCenter = p.x + p.w / 2;
-        const verticalReach = turtle.y - p.y <= 120;
-        const horizontalReach = Math.abs(pCenter - tCenter) <= 80;
-
-        return (
-            p.y < turtle.y - 20 &&   // above turtle
-            verticalReach &&
-            horizontalReach
-        );
-    });
-
-    if (candidates.length === 0) return null;
-
-    // Choose the closest platform above
-    return candidates.reduce((closest, p) =>
+    return above.reduce((closest, p) =>
         p.y > closest.y ? p : closest
     );
 }
@@ -207,19 +192,14 @@ function update() {
         }
     }
 
-    // === TURTLE AI — FINAL FIX ===
+    // === TURTLE AI — HOP + TELEPORT ===
 
-    // Pick target if none
+    // Pick next platform if none
     if (!turtle.targetPlatform) {
-        turtle.targetPlatform = getReachablePlatform(turtle);
+        turtle.targetPlatform = getNextPlatformAbove(turtle.y);
     }
 
-    // If turtle fell below target, retarget
-    if (turtle.targetPlatform && turtle.y > turtle.targetPlatform.y + 60) {
-        turtle.targetPlatform = getReachablePlatform(turtle);
-    }
-
-    // Move toward target
+    // Move toward center of target platform
     if (!turtle.exhausted && turtle.targetPlatform) {
         const center = turtle.targetPlatform.x + turtle.targetPlatform.w / 2;
         const tCenter = turtle.x + turtle.w / 2;
@@ -227,10 +207,25 @@ function update() {
         if (tCenter < center - 5) turtle.x += turtle.speed;
         else if (tCenter > center + 5) turtle.x -= turtle.speed;
 
-        // Jump only when centered
-        if (Math.abs(center - tCenter) < 10 && turtle.grounded) {
-            turtle.vy = turtle.jumpPower;
+        // When close enough, start hop animation
+        if (Math.abs(center - tCenter) < 40 && turtle.grounded) {
+            turtle.hopTimer = 10; // frames of hop
+            turtle.vy = -4;       // small hop
             turtle.grounded = false;
+        }
+    }
+
+    // Hop animation countdown
+    if (turtle.hopTimer > 0) {
+        turtle.hopTimer--;
+
+        // When hop finishes, teleport up
+        if (turtle.hopTimer === 0) {
+            turtle.y = turtle.targetPlatform.y - turtle.h;
+            turtle.vy = 0;
+            turtle.grounded = true;
+
+            turtle.targetPlatform = getNextPlatformAbove(turtle.y);
         }
     }
 
@@ -268,7 +263,7 @@ function update() {
             turtle.vy = 0;
             turtle.grounded = true;
 
-            turtle.targetPlatform = getReachablePlatform(turtle);
+            turtle.targetPlatform = getNextPlatformAbove(turtle.y);
         }
     });
 
@@ -329,6 +324,7 @@ function resetGame() {
     if (turtle) {
         turtle.grounded = false;
         turtle.vy = 0;
+        turtle.hopTimer = 0;
     }
 }
 
@@ -359,13 +355,12 @@ function draw() {
 
     ctx.drawImage(player.sprite, player.x, player.y - cameraY, player.w, player.h);
 
-    ctx.save();
-    ctx.translate(
-        turtle.x + turtle.w / 2,
-        turtle.y - cameraY + turtle.h / 2
+    // Turtle (no rotation needed)
+    ctx.drawImage(
+        turtle.exhausted ? turtleExhaustedImg : turtleImg,
+        turtle.x,
+        turtle.y - cameraY,
+        turtle.w,
+        turtle.h
     );
-    ctx.rotate(turtle.collapseAngle);
-    const tImg = turtle.exhausted ? turtleExhaustedImg : turtleImg;
-    ctx.drawImage(tImg, -turtle.w / 2, -turtle.h / 2, turtle.w, turtle.h);
-    ctx.restore();
 }
