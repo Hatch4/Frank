@@ -58,7 +58,7 @@ function init(character) {
         w: 80,
         h: 80,
         vy: 0,
-        jumpPower: -9,      // tuned for ~1 platform (50px)
+        jumpPower: -9,
         sprite: character === "boy" ? boyImg : girlImg,
         grounded: false
     };
@@ -97,7 +97,7 @@ function generatePlatforms() {
 
     let x = 200;
     let y = 650;
-    const stepY = 50;      // ~50px gap
+    const stepY = 50;
     const maxShift = 120;
 
     for (let i = 0; i < 20; i++) {
@@ -151,7 +151,7 @@ function gameLoop() {
 // === UPDATE ===
 function update() {
 
-    // Gravity (slightly stronger for consistent jump)
+    // Gravity
     player.vy += 0.6;
     player.y += player.vy;
 
@@ -163,11 +163,10 @@ function update() {
         gameStartedClimbing = true;
     }
 
-    // === CAMERA (smooth scrolling, no streaking) ===
+    // === INSTANT CAMERA (UPWARD ONLY) ===
     cameraY = player.y - 300;
-    cameraY = Math.min(cameraY, 0);
-    cameraY = Math.max(cameraY, -800);
-
+    if (cameraY > 0) cameraY = 0;
+    if (cameraY < -1000) cameraY = -1000;
 
     // Player movement
     if (player.grounded) {
@@ -250,7 +249,6 @@ function update() {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist < pu.r + 30) {
-            // Slight boost but still controlled
             player.jumpPower -= 1;
             powerSound.play();
             return false;
@@ -287,9 +285,9 @@ function resetGame() {
     gameRunning = false;
     document.getElementById("menu").style.display = "block";
 
-    // Clear control + physics state to avoid auto-jump
     leftPressed = false;
     rightPressed = false;
+
     if (player) {
         player.grounded = false;
         player.vy = 0;
