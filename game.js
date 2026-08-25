@@ -9,7 +9,7 @@ let gameStartedClimbing = false;
 
 // === IMAGES ===
 const bgImg = new Image(); bgImg.src = "background.png";
-const nightImg = new Image(); nightImg.src = "night.png"; // <-- Add your night sky image here
+const nightImg = new Image(); nightImg.src = "night.png"; // Your uploaded night sky
 const boyImg = new Image(); boyImg.src = "boy.png";
 const girlImg = new Image(); girlImg.src = "girl.png";
 const turtleImg = new Image(); turtleImg.src = "turtle.png";
@@ -70,7 +70,7 @@ function init(character) {
         w: 90,
         h: 90,
         vy: 0,
-        jumpPower: -11, // <-- Turtle now reaches the top
+        jumpPower: -11, // Turtle now reaches top reliably
         speed: getTurtleSpeed(),
         exhausted: retryCount >= 5,
         collapseAngle: 0,
@@ -258,24 +258,24 @@ function update() {
     });
 
     // === FIXED WIN CONDITION (SCREEN-RELATIVE) ===
-const topPlatform = getTopPlatform();
-const playerScreenY = player.y - cameraY;
-const topScreenY = topPlatform.y - cameraY;
+    const topPlatform = getTopPlatform();
+    const playerScreenY = player.y - cameraY;
+    const topScreenY = topPlatform.y - cameraY;
 
-if (gameStartedClimbing && playerScreenY < topScreenY + 50) {
-    winSound.play();
-    alert("You reached the top!");
-    resetGame();
-}
+    if (gameStartedClimbing && playerScreenY < topScreenY + 50) {
+        winSound.play();
+        alert("You reached the top!");
+        resetGame();
+    }
 
-// TURTLE WIN
-const turtleScreenY = turtle.y - cameraY;
-if (gameStartedClimbing && turtleScreenY < topScreenY + 50 && !turtle.exhausted) {
-    loseSound.play();
-    retryCount++;
-    alert("The turtle won the race!");
-    resetGame();
-}
+    // TURTLE WIN
+    const turtleScreenY = turtle.y - cameraY;
+    if (gameStartedClimbing && turtleScreenY < topScreenY + 50 && !turtle.exhausted) {
+        loseSound.play();
+        retryCount++;
+        alert("The turtle won the race!");
+        resetGame();
+    }
 
     // FALL LOSE
     if (player.y > 700) {
