@@ -301,6 +301,9 @@ function resetGame() {
 // === DRAW ===
 function draw() {
 
+    // CLEAR THE CANVAS FIRST
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
     // Background
     ctx.drawImage(bgImg, 0, -cameraY, canvas.width, canvas.height);
 
