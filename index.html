@@ -2,43 +2,76 @@
 <html>
 <head>
   <title>Climber Race</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <style>
-    body { margin:0; background:#000; font-family:Arial, sans-serif; }
-    canvas { display:block; margin:auto; background:#222; }
+    /* Fix mobile highlight issues */
+    * {
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      margin: 0;
+      background: #000;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    /* FULL SCREEN CANVAS */
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 75vh; /* top 75% of screen */
+      background: #222;
+    }
 
     #menu {
-      text-align:center;
-      margin-top:20px;
-      color:white;
+      text-align: center;
+      margin-top: 20px;
+      color: white;
+      position: absolute;
+      width: 100%;
+      z-index: 10;
     }
 
     button {
-      padding:10px 20px;
-      font-size:20px;
-      margin:5px;
-      border-radius:10px;
-      border:none;
-      background:#ffdd55;
-      font-weight:bold;
-      cursor:pointer;
+      padding: 12px 24px;
+      font-size: 22px;
+      margin: 5px;
+      border-radius: 10px;
+      border: none;
+      background: #ffdd55;
+      font-weight: bold;
+      cursor: pointer;
     }
 
+    /* BIG MOBILE CONTROLS */
     #mobileControls {
-      position:fixed;
-      bottom:20px;
-      left:50%;
-      transform:translateX(-50%);
-      display:flex;
-      gap:20px;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100vw;
+      height: 25vh;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 20;
     }
 
     #mobileControls button {
-      padding:15px 25px;
-      font-size:22px;
-      border-radius:15px;
-      background:#ffdd55;
-      border:none;
-      font-weight:bold;
+      width: 40vw;
+      height: 18vh;
+      font-size: 50px;
+      border-radius: 25px;
+      background: #ffdd55;
+      border: none;
+      font-weight: bold;
     }
   </style>
 </head>
