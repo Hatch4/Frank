@@ -1,97 +1,428 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Climber Race</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
 
-  <style>
-    /* Fix mobile highlight issues */
-    * {
-      -webkit-user-select: none;
-      -webkit-touch-callout: none;
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
+<!-- ⭐ Prevent iOS zooming, double‑tap zoom, pinch zoom -->
+<meta name="viewport"
+      content="width=device-width,
+               initial-scale=1,
+               maximum-scale=1,
+               user-scalable=no">
+
+<title>Climbing Race Game</title>
+
+<style>
+    /* ⭐ Prevent ALL zoom gestures on iOS */
+    html, body {
+        margin: 0;
+        padding: 0;
+        touch-action: manipulation;
+        -webkit-text-size-adjust: 100%;
+        overflow: hidden;
+        background: black;
     }
 
-    body {
-      margin: 0;
-      background: #000;
-      overflow: hidden;
-      font-family: Arial, sans-serif;
+    /* Canvas full screen */
+    #gameCanvas {
+        background: #000;
+        width: 100vw;
+        height: 100vh;
+        touch-action: none;
+        display: block;
     }
 
-    /* FULL SCREEN CANVAS */
-    canvas {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 75vh; /* top 75% of screen */
-      background: #222;
+    /* ⭐ Buttons should NEVER trigger zoom */
+    button {
+        font-size: 22px;
+        padding: 14px 20px;
+        margin: 10px;
+        touch-action: manipulation;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        user-select: none;
+        border-radius: 12px;
+        border: none;
+        background: #444;
+        color: white;
+    }
+
+    #controls {
+        position: fixed;
+        bottom: 20px;
+        width: 100%;
+        display: flex;
+        justify-content: space-around;
+        z-index: 10;
     }
 
     #menu {
-      text-align: center;
-      margin-top: 20px;
-      color: white;
-      position: absolute;
-      width: 100%;
-      z-index: 10;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 20;
     }
-
-    button {
-      padding: 12px 24px;
-      font-size: 22px;
-      margin: 5px;
-      border-radius: 10px;
-      border: none;
-      background: #ffdd55;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    /* BIG MOBILE CONTROLS */
-    #mobileControls {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100vw;
-      height: 25vh;
-      background: rgba(0,0,0,0.4);
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      z-index: 20;
-    }
-
-    #mobileControls button {
-      width: 40vw;
-      height: 18vh;
-      font-size: 50px;
-      border-radius: 25px;
-      background: #ffdd55;
-      border: none;
-      font-weight: bold;
-    }
-  </style>
+</style>
 </head>
 
 <body>
 
 <div id="menu">
-  <h1>Choose Your Character</h1>
-  <button onclick="startGame('boy')">Boy</button>
-  <button onclick="startGame('girl')">Girl</button>
+    <h1>Climbing Race</h1>
+    <button onclick="startGame('boy')">Play as Boy</button>
+    <button onclick="startGame('girl')">Play as Girl</button>
 </div>
 
 <canvas id="gameCanvas" width="500" height="700"></canvas>
 
-<div id="mobileControls">
-  <button id="leftBtn">◀</button>
-  <button id="rightBtn">▶</button>
+<div id="controls">
+    <button id="leftBtn">Left</button>
+    <button id="rightBtn">Right</button>
 </div>
 
-<script src="game.js"></script>
+<script>
+/* ⭐ Prevent iOS double‑tap zoom */
+let lastTouch = 0;
+document.addEventListener('touchend', function(e) {
+    const now = Date.now();
+    if (now - lastTouch <= 300) {
+        e.preventDefault();
+    }
+    lastTouch = now;
+}, { passive: false });
+
+/* ⭐ Prevent Safari pinch zoom */
+document.addEventListener('gesturestart', function(e) {
+    e.preventDefault();
+});
+
+/* ⭐ Prevent double‑tap zoom */
+document.addEventListener('dblclick', function(e) {
+    e.preventDefault();
+});
+
+/* ⭐ Prevent text selection */
+document.addEventListener('selectstart', function(e) {
+    e.preventDefault();
+});
+
+/* ⭐ Prevent highlight flash */
+document.addEventListener('touchstart', function(e) {
+    if (e.target.tagName === 'BUTTON') {
+        e.target.style.webkitTapHighlightColor = 'transparent';
+    }
+});
+</script>
+
+<!-- ⭐ Your entire game.js is embedded below -->
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let player, turtle, platforms = [], powerUps = [], flag;
+let retryCount = 0;
+let gameRunning = false;
+let cameraY = 0;
+let gameStartedClimbing = false;
+
+// === IMAGES ===
+const bgImg = new Image(); bgImg.src = "background.png";
+const nightImg = new Image(); nightImg.src = "night.png";
+const boyImg = new Image(); boyImg.src = "boy.png";
+const girlImg = new Image(); girlImg.src = "girl.png";
+const turtleImg = new Image(); turtleImg.src = "turtle.png";
+const turtleExhaustedImg = new Image(); turtleExhaustedImg.src = "turtle_exhausted.png";
+const flagImg = new Image(); flagImg.src = "flag.png";
+
+// === SOUNDS ===
+const jumpSound = new Audio("jump.wav");
+const winSound = new Audio("win.wav");
+const loseSound = new Audio("lose.wav");
+const powerSound = new Audio("power.wav");
+
+// === CONTROLS ===
+let leftPressed = false;
+let rightPressed = false;
+
+document.getElementById("leftBtn").addEventListener("touchstart", () => leftPressed = true);
+document.getElementById("leftBtn").addEventListener("touchend", () => leftPressed = false);
+
+document.getElementById("rightBtn").addEventListener("touchstart", () => rightPressed = true);
+document.getElementById("rightBtn").addEventListener("touchend", () => rightPressed = false);
+
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") leftPressed = true;
+    if (e.key === "ArrowRight") rightPressed = true;
+});
+document.addEventListener("keyup", e => {
+    if (e.key === "ArrowLeft") leftPressed = false;
+    if (e.key === "ArrowRight") rightPressed = false;
+});
+
+// === START GAME ===
+function startGame(character) {
+    document.getElementById("menu").style.display = "none";
+    init(character);
+    gameRunning = true;
+    requestAnimationFrame(gameLoop);
+}
+
+// === INITIALIZE ===
+function init(character) {
+    gameStartedClimbing = false;
+
+    player = {
+        x: 250,
+        y: 600,
+        w: 80,
+        h: 80,
+        vy: 0,
+        jumpPower: -9,
+        sprite: character === "boy" ? boyImg : girlImg,
+        grounded: false
+    };
+
+    turtle = {
+        x: 150,
+        y: 600,
+        w: 90,
+        h: 90,
+        speedY: 2.2,   // Balanced climb speed
+        wiggleTimer: 0,
+        exhausted: retryCount >= 5
+    };
+
+    leftPressed = false;
+    rightPressed = false;
+
+    generatePlatforms();
+    generatePowerUps();
+    generateFlag();
+
+    cameraY = 0;
+}
+
+// === PLATFORM GENERATION ===
+function generatePlatforms() {
+    platforms = [];
+
+    let x = 200;
+    let y = 650;
+    const stepY = 50;
+    const maxShift = 120;
+
+    for (let i = 0; i < 20; i++) {
+        x += (Math.random() * maxShift * 2) - maxShift;
+        x = Math.max(20, Math.min(380, x));
+
+        platforms.push({ x, y, w: 100, h: 20 });
+        y -= stepY;
+    }
+
+    platforms.push({ x: 0, y: 690, w: 500, h: 20 }); // ground
+}
+
+// === FLAG OBJECT — REACHABLE HEIGHT ===
+function generateFlag() {
+    const top = getTopPlatform();
+
+    flag = {
+        x: top.x + 20,
+        y: top.y - 80,
+        w: 60,
+        h: 60
+    };
+}
+
+// === FIND TRUE TOP PLATFORM ===
+function getTopPlatform() {
+    return platforms.reduce((highest, p) => p.y < highest.y ? p : highest);
+}
+
+// === POWER-UPS ===
+function generatePowerUps() {
+    powerUps = [];
+
+    for (let i = 0; i < 6; i++) {
+        powerUps.push({
+            x: Math.random() * 420 + 40,
+            y: 700 - (i * 200 + 150),
+            r: 15,
+            type: "speed"
+        });
+    }
+}
+
+// === GAME LOOP ===
+function gameLoop() {
+    if (!gameRunning) return;
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+// === UPDATE ===
+function update() {
+
+    // Gravity
+    player.vy += 0.6;
+    player.y += player.vy;
+
+    // Start climbing check
+    if (!gameStartedClimbing && player.y < 500) {
+        gameStartedClimbing = true;
+    }
+
+    // === CAMERA ===
+    cameraY = player.y - 300;
+    if (cameraY > 0) cameraY = 0;
+    if (cameraY < -3200) cameraY = -3200;
+
+    // === PLAYER MOVEMENT ===
+    if (player.grounded) {
+        if (leftPressed) {
+            player.vy = player.jumpPower;
+            player.x -= 20;
+            player.grounded = false;
+            jumpSound.play();
+        }
+        if (rightPressed) {
+            player.vy = player.jumpPower;
+            player.x += 20;
+            player.grounded = false;
+            jumpSound.play();
+        }
+    }
+
+    // === TURTLE AI — SMOOTH + RACE CLIMB ===
+
+    if (!turtle.exhausted) {
+        turtle.y -= turtle.speedY; // Smooth upward climb
+
+        // Wiggle left/right to look alive
+        turtle.wiggleTimer++;
+        turtle.x += Math.sin(turtle.wiggleTimer / 20) * 0.8;
+    }
+
+    // === PLATFORM COLLISION (PLAYER) ===
+    player.grounded = false;
+
+    platforms.forEach(p => {
+        const onPlatform =
+            player.x + player.w > p.x &&
+            player.x < p.x + p.w &&
+            player.y + player.h >= p.y &&
+            player.y + player.h <= p.y + 10 &&
+            player.vy >= 0;
+
+        if (onPlatform) {
+            player.y = p.y - player.h;
+            player.vy = 0;
+            player.grounded = true;
+        }
+    });
+
+    // === POWER-UP COLLISION ===
+    powerUps = powerUps.filter(pu => {
+        const dx = (player.x + player.w / 2) - pu.x;
+        const dy = (player.y + player.h / 2) - pu.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < pu.r + 30) {
+            player.jumpPower -= 1;
+            powerSound.play();
+            return false;
+        }
+        return true;
+    });
+
+    // === WIN CONDITION ===
+    const playerScreenY = player.y - cameraY;
+    const flagScreenY = flag.y - cameraY;
+
+    if (gameStartedClimbing && playerScreenY < flagScreenY + 50) {
+        winSound.play();
+        alert("You reached the top!");
+        resetGame();
+    }
+
+    // === TURTLE WIN ===
+    const turtleScreenY = turtle.y - cameraY;
+    if (gameStartedClimbing && turtleScreenY < flagScreenY + 50 && !turtle.exhausted) {
+        loseSound.play();
+        retryCount++;
+        alert("The turtle won the race!");
+        resetGame();
+    }
+
+    // === FALL LOSE ===
+    if (player.y > 700) {
+        retryCount++;
+        loseSound.play();
+        alert("You fell! Turtle gets easier.");
+        resetGame();
+    }
+}
+
+// === RESET ===
+function resetGame() {
+    gameRunning = false;
+    document.getElementById("menu").style.display = "block";
+
+    leftPressed = false;
+    rightPressed = false;
+
+    if (player) {
+        player.grounded = false;
+        player.vy = 0;
+    }
+}
+
+// === DRAW ===
+function draw() {
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.drawImage(nightImg, 0, -cameraY - canvas.height, canvas.width, canvas.height);
+    ctx.drawImage(bgImg, 0, -cameraY, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#8B4513";
+    platforms.forEach(p => {
+        ctx.fillRect(p.x, p.y - cameraY, p.w, p.h);
+    });
+
+    ctx.fillStyle = "yellow";
+    powerUps.forEach(pu => {
+        ctx.beginPath();
+        ctx.arc(pu.x, pu.y - cameraY, pu.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "orange";
+        ctx.stroke();
+    });
+
+    ctx.drawImage(flagImg, flag.x, flag.y - cameraY, flag.w, flag.h);
+
+    ctx.drawImage(player.sprite, player.x, player.y - cameraY, player.w, player.h);
+
+    // Turtle (smooth climb)
+    ctx.drawImage(
+        turtle.exhausted ? turtleExhaustedImg : turtleImg,
+        turtle.x,
+        turtle.y - cameraY,
+        turtle.w,
+        turtle.h
+    );
+}
+</script>
 
 </body>
 </html>
