@@ -69,12 +69,9 @@ function init(character) {
         y: 600,
         w: 90,
         h: 90,
-        vy: 0,
-        speed: Math.max(1, 3 - retryCount * 0.4),
-        exhausted: retryCount >= 5,
-        grounded: false,
-        targetPlatform: null,
-        hopTimer: 0
+        speedY: 2.2,   // Balanced climb speed
+        wiggleTimer: 0,
+        exhausted: retryCount >= 5
     };
 
     leftPressed = false;
@@ -124,16 +121,6 @@ function getTopPlatform() {
     return platforms.reduce((highest, p) => p.y < highest.y ? p : highest);
 }
 
-// === TURTLE TARGETING — TELEPORT ASSIST ===
-function getNextPlatformAbove(turtleY) {
-    let above = platforms.filter(p => p.y < turtleY - 20);
-    if (above.length === 0) return null;
-
-    return above.reduce((closest, p) =>
-        p.y > closest.y ? p : closest
-    );
-}
-
 // === POWER-UPS ===
 function generatePowerUps() {
     powerUps = [];
@@ -163,9 +150,6 @@ function update() {
     player.vy += 0.6;
     player.y += player.vy;
 
-    turtle.vy += 0.6;
-    turtle.y += turtle.vy;
-
     // Start climbing check
     if (!gameStartedClimbing && player.y < 500) {
         gameStartedClimbing = true;
@@ -192,41 +176,14 @@ function update() {
         }
     }
 
-    // === TURTLE AI — HOP + TELEPORT ===
+    // === TURTLE AI — SMOOTH + RACE CLIMB ===
 
-    // Pick next platform if none
-    if (!turtle.targetPlatform) {
-        turtle.targetPlatform = getNextPlatformAbove(turtle.y);
-    }
+    if (!turtle.exhausted) {
+        turtle.y -= turtle.speedY; // Smooth upward climb
 
-    // Move toward center of target platform
-    if (!turtle.exhausted && turtle.targetPlatform) {
-        const center = turtle.targetPlatform.x + turtle.targetPlatform.w / 2;
-        const tCenter = turtle.x + turtle.w / 2;
-
-        if (tCenter < center - 5) turtle.x += turtle.speed;
-        else if (tCenter > center + 5) turtle.x -= turtle.speed;
-
-        // When close enough, start hop animation
-        if (Math.abs(center - tCenter) < 40 && turtle.grounded) {
-            turtle.hopTimer = 10; // frames of hop
-            turtle.vy = -4;       // small hop
-            turtle.grounded = false;
-        }
-    }
-
-    // Hop animation countdown
-    if (turtle.hopTimer > 0) {
-        turtle.hopTimer--;
-
-        // When hop finishes, teleport up
-        if (turtle.hopTimer === 0) {
-            turtle.y = turtle.targetPlatform.y - turtle.h;
-            turtle.vy = 0;
-            turtle.grounded = true;
-
-            turtle.targetPlatform = getNextPlatformAbove(turtle.y);
-        }
+        // Wiggle left/right to look alive
+        turtle.wiggleTimer++;
+        turtle.x += Math.sin(turtle.wiggleTimer / 20) * 0.8;
     }
 
     // === PLATFORM COLLISION (PLAYER) ===
@@ -244,26 +201,6 @@ function update() {
             player.y = p.y - player.h;
             player.vy = 0;
             player.grounded = true;
-        }
-    });
-
-    // === PLATFORM COLLISION (TURTLE) ===
-    turtle.grounded = false;
-
-    platforms.forEach(p => {
-        const onPlatform =
-            turtle.x + turtle.w > p.x &&
-            turtle.x < p.x + p.w &&
-            turtle.y + turtle.h >= p.y &&
-            turtle.y + turtle.h <= p.y + 10 &&
-            turtle.vy >= 0;
-
-        if (onPlatform) {
-            turtle.y = p.y - turtle.h;
-            turtle.vy = 0;
-            turtle.grounded = true;
-
-            turtle.targetPlatform = getNextPlatformAbove(turtle.y);
         }
     });
 
@@ -321,11 +258,6 @@ function resetGame() {
         player.grounded = false;
         player.vy = 0;
     }
-    if (turtle) {
-        turtle.grounded = false;
-        turtle.vy = 0;
-        turtle.hopTimer = 0;
-    }
 }
 
 // === DRAW ===
@@ -355,7 +287,7 @@ function draw() {
 
     ctx.drawImage(player.sprite, player.x, player.y - cameraY, player.w, player.h);
 
-    // Turtle (no rotation needed)
+    // Turtle (smooth climb)
     ctx.drawImage(
         turtle.exhausted ? turtleExhaustedImg : turtleImg,
         turtle.x,
