@@ -21,7 +21,6 @@ const powerSound = new Audio("power.wav");
 // === CONTROL FLAGS ===
 let leftPressed = false;
 let rightPressed = false;
-let jumpPressed = false;
 
 // === MOBILE CONTROLS ===
 document.getElementById("leftBtn").addEventListener("touchstart", () => leftPressed = true);
@@ -30,20 +29,14 @@ document.getElementById("leftBtn").addEventListener("touchend", () => leftPresse
 document.getElementById("rightBtn").addEventListener("touchstart", () => rightPressed = true);
 document.getElementById("rightBtn").addEventListener("touchend", () => rightPressed = false);
 
-document.getElementById("jumpBtn").addEventListener("touchstart", () => jumpPressed = true);
-document.getElementById("jumpBtn").addEventListener("touchend", () => jumpPressed = false);
-
 // === KEYBOARD CONTROLS ===
 document.addEventListener("keydown", e => {
     if (e.key === "ArrowLeft") leftPressed = true;
     if (e.key === "ArrowRight") rightPressed = true;
-    if (e.key === " ") jumpPressed = true;
 });
-
 document.addEventListener("keyup", e => {
     if (e.key === "ArrowLeft") leftPressed = false;
     if (e.key === "ArrowRight") rightPressed = false;
-    if (e.key === " ") jumpPressed = false;
 });
 
 // === START GAME ===
@@ -65,7 +58,8 @@ function init(character) {
         jumpPower: -15,
         sprite: character === "boy" ? boyImg : girlImg,
         speedBoost: 0,
-        boostTimer: 0
+        boostTimer: 0,
+        grounded: false
     };
 
     turtle = {
@@ -89,7 +83,7 @@ function getTurtleSpeed() {
     if (retryCount === 2) return 1.5;
     if (retryCount === 3) return 1.0;
     if (retryCount === 4) return 0.5;
-    return 0; // exhausted
+    return 0;
 }
 
 // === PLATFORM GENERATION ===
@@ -134,37 +128,38 @@ function gameLoop() {
 // === UPDATE LOGIC ===
 function update() {
 
-    // Horizontal movement
-    if (leftPressed) player.x -= 5;
-    if (rightPressed) player.x += 5;
-
     // Gravity
     player.vy += 0.5;
     player.y += player.vy;
 
-    // Boost timer
-    if (player.boostTimer > 0) {
-        player.boostTimer--;
-        if (player.boostTimer === 0) player.speedBoost = 0;
+    // Horizontal movement + directional jump
+    if (leftPressed && player.grounded) {
+        player.vy = player.jumpPower;
+        player.x -= 20;
+        jumpSound.play();
     }
 
-    // PLATFORM COLLISION (NO AUTO JUMP)
+    if (rightPressed && player.grounded) {
+        player.vy = player.jumpPower;
+        player.x += 20;
+        jumpSound.play();
+    }
+
+    // PLATFORM COLLISION
+    player.grounded = false;
+
     platforms.forEach(p => {
-        const standingOnPlatform =
+        const onPlatform =
             player.y + player.h >= p.y &&
             player.y + player.h <= p.y + 10 &&
             player.x + player.w > p.x &&
             player.x < p.x + p.w &&
             player.vy > 0;
 
-        if (standingOnPlatform) {
-            player.vy = 0; // stop falling
-
-            if (jumpPressed) {
-                player.vy = player.jumpPower + player.speedBoost;
-                jumpSound.currentTime = 0;
-                jumpSound.play();
-            }
+        if (onPlatform) {
+            player.y = p.y - player.h;
+            player.vy = 0;
+            player.grounded = true;
         }
     });
 
@@ -177,7 +172,6 @@ function update() {
         if (dist < pu.r + 30) {
             player.speedBoost = -4;
             player.boostTimer = 300;
-            powerSound.currentTime = 0;
             powerSound.play();
             return false;
         }
