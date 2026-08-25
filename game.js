@@ -55,7 +55,7 @@ function init(character) {
         w: 80,
         h: 80,
         vy: 0,
-        jumpPower: -15,
+        jumpPower: -10,   // LOWER JUMP FOR MOBILE
         sprite: character === "boy" ? boyImg : girlImg,
         grounded: false
     };
@@ -66,7 +66,7 @@ function init(character) {
         w: 90,
         h: 90,
         vy: 0,
-        jumpPower: -12,
+        jumpPower: -8,    // LOWER JUMP FOR MOBILE
         speed: getTurtleSpeed(),
         exhausted: retryCount >= 5,
         collapseAngle: 0,
@@ -198,7 +198,7 @@ function update() {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist < pu.r + 30) {
-            player.jumpPower -= 3;
+            player.jumpPower -= 2;
             powerSound.play();
             return false;
         }
