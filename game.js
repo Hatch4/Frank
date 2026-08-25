@@ -75,7 +75,8 @@ function init(character) {
         exhausted: retryCount >= 5,
         collapseAngle: 0,
         grounded: false,
-        targetPlatform: null
+        targetPlatform: null,
+        stuckTimer: 0
     };
 
     leftPressed = false;
@@ -119,7 +120,7 @@ function generateFlag() {
 
     flag = {
         x: top.x + 20,
-        y: top.y - 200,   // ⭐ Flag placed safely above top platform
+        y: top.y - 200,
         w: 60,
         h: 60
     };
@@ -177,15 +178,12 @@ function update() {
         gameStartedClimbing = true;
     }
 
-    // === INSTANT CAMERA (UPWARD ONLY) ===
+    // === CAMERA ===
     cameraY = player.y - 300;
-
     if (cameraY > 0) cameraY = 0;
-
-    // ⭐ CORRECTED CAMERA CLAMP — FIXES EARLY WIN
     if (cameraY < -3200) cameraY = -3200;
 
-    // Player movement
+    // === PLAYER MOVEMENT ===
     if (player.grounded) {
         if (leftPressed) {
             player.vy = player.jumpPower;
@@ -201,27 +199,40 @@ function update() {
         }
     }
 
-    // Turtle AI
-    if (!turtle.exhausted) {
-        if (!turtle.targetPlatform) {
+    // === TURTLE AI FIXES ===
+
+    // 1. If turtle is falling, recalc target platform
+    if (turtle.vy > 0 && !turtle.grounded) {
+        turtle.targetPlatform = getNextPlatformAbove(turtle.y);
+    }
+
+    // 2. If turtle is stuck (not moving), recalc target
+    if (Math.abs(turtle.vy) < 0.1 && !turtle.grounded) {
+        turtle.stuckTimer++;
+        if (turtle.stuckTimer > 20) {
             turtle.targetPlatform = getNextPlatformAbove(turtle.y);
+            turtle.stuckTimer = 0;
         }
+    } else {
+        turtle.stuckTimer = 0;
+    }
 
-        if (turtle.targetPlatform) {
-            const center = turtle.targetPlatform.x + turtle.targetPlatform.w / 2;
-            const tCenter = turtle.x + turtle.w / 2;
+    // 3. Move turtle toward platform center
+    if (!turtle.exhausted && turtle.targetPlatform) {
+        const center = turtle.targetPlatform.x + turtle.targetPlatform.w / 2;
+        const tCenter = turtle.x + turtle.w / 2;
 
-            if (tCenter < center) turtle.x += turtle.speed;
-            else turtle.x -= turtle.speed;
+        if (tCenter < center) turtle.x += turtle.speed;
+        else turtle.x -= turtle.speed;
 
-            if (Math.abs(center - tCenter) < 20 && turtle.grounded) {
-                turtle.vy = turtle.jumpPower;
-                turtle.grounded = false;
-            }
+        // 4. Wider jump zone for zig-zag layouts
+        if (Math.abs(center - tCenter) < 35 && turtle.grounded) {
+            turtle.vy = turtle.jumpPower;
+            turtle.grounded = false;
         }
     }
 
-    // PLATFORM COLLISION (PLAYER)
+    // === PLATFORM COLLISION (PLAYER) ===
     player.grounded = false;
 
     platforms.forEach(p => {
@@ -239,7 +250,7 @@ function update() {
         }
     });
 
-    // PLATFORM COLLISION (TURTLE)
+    // === PLATFORM COLLISION (TURTLE) ===
     turtle.grounded = false;
 
     platforms.forEach(p => {
@@ -259,7 +270,7 @@ function update() {
         }
     });
 
-    // POWER-UP COLLISION
+    // === POWER-UP COLLISION ===
     powerUps = powerUps.filter(pu => {
         const dx = (player.x + player.w / 2) - pu.x;
         const dy = (player.y + player.h / 2) - pu.y;
@@ -273,7 +284,7 @@ function update() {
         return true;
     });
 
-    // === FIXED WIN CONDITION — FLAG ONLY ===
+    // === WIN CONDITION ===
     const playerScreenY = player.y - cameraY;
     const flagScreenY = flag.y - cameraY;
 
@@ -283,7 +294,7 @@ function update() {
         resetGame();
     }
 
-    // TURTLE WIN
+    // === TURTLE WIN ===
     const turtleScreenY = turtle.y - cameraY;
     if (gameStartedClimbing && turtleScreenY < flagScreenY + 50 && !turtle.exhausted) {
         loseSound.play();
@@ -292,7 +303,7 @@ function update() {
         resetGame();
     }
 
-    // FALL LOSE
+    // === FALL LOSE ===
     if (player.y > 700) {
         retryCount++;
         loseSound.play();
@@ -325,19 +336,19 @@ function draw() {
     // CLEAR CANVAS
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // === NIGHT SKY ABOVE MAIN BACKGROUND ===
+    // NIGHT SKY
     ctx.drawImage(nightImg, 0, -cameraY - canvas.height, canvas.width, canvas.height);
 
-    // === MAIN BACKGROUND ===
+    // MAIN BACKGROUND
     ctx.drawImage(bgImg, 0, -cameraY, canvas.width, canvas.height);
 
-    // Platforms
+    // PLATFORMS
     ctx.fillStyle = "#8B4513";
     platforms.forEach(p => {
         ctx.fillRect(p.x, p.y - cameraY, p.w, p.h);
     });
 
-    // Power-ups
+    // POWER-UPS
     ctx.fillStyle = "yellow";
     powerUps.forEach(pu => {
         ctx.beginPath();
@@ -348,13 +359,13 @@ function draw() {
         ctx.stroke();
     });
 
-    // ⭐ DRAW FLAG OBJECT
+    // FLAG
     ctx.drawImage(flagImg, flag.x, flag.y - cameraY, flag.w, flag.h);
 
-    // Player
+    // PLAYER
     ctx.drawImage(player.sprite, player.x, player.y - cameraY, player.w, player.h);
 
-    // Turtle
+    // TURTLE
     ctx.save();
     ctx.translate(
         turtle.x + turtle.w / 2,
