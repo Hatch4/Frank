@@ -83,7 +83,7 @@ function init(character) {
 
     generatePlatforms();
     generatePowerUps();
-    generateFlag();   // ⭐ NEW FLAG OBJECT
+    generateFlag();
 
     cameraY = 0;
 }
@@ -113,13 +113,13 @@ function generatePlatforms() {
     platforms.push({ x: 0, y: 690, w: 500, h: 20 }); // ground
 }
 
-// === FLAG OBJECT (REAL FIX) ===
+// === FLAG OBJECT ===
 function generateFlag() {
     const top = getTopPlatform();
 
     flag = {
         x: top.x + 20,
-        y: top.y - 80,   // ⭐ Flag ABOVE the top platform
+        y: top.y - 200,   // ⭐ Flag placed safely above top platform
         w: 60,
         h: 60
     };
@@ -182,8 +182,8 @@ function update() {
 
     if (cameraY > 0) cameraY = 0;
 
-    // ⭐ EXTENDED CAMERA CLAMP — FIXES EARLY WIN
-    if (cameraY < -2000) cameraY = -2000;
+    // ⭐ CORRECTED CAMERA CLAMP — FIXES EARLY WIN
+    if (cameraY < -3200) cameraY = -3200;
 
     // Player movement
     if (player.grounded) {
