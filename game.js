@@ -88,13 +88,13 @@ function getTurtleSpeed() {
     return 0;
 }
 
-// === PLATFORM GENERATION (STAIRCASE PATTERN) ===
+// === PLATFORM GENERATION (REACHABLE + TALL LEVEL) ===
 function generatePlatforms() {
     platforms = [];
 
     let x = 200;
     let y = 650;
-    const stepY = 60;     // reachable height
+    const stepY = 55;     // reachable height
     const maxShift = 120;
 
     for (let i = 0; i < 40; i++) {  // DOUBLE HEIGHT
@@ -146,8 +146,9 @@ function update() {
     turtle.vy += 0.5;
     turtle.y += turtle.vy;
 
-    // Camera follows player
-    cameraY = Math.min(player.y - 300, 0);
+    // Camera follows player smoothly
+    cameraY = player.y - 300;
+    if (cameraY < 0) cameraY = 0;
 
     // Directional jump (player)
     if (player.grounded) {
@@ -163,21 +164,26 @@ function update() {
         }
     }
 
-    // Turtle AI movement toward next platform
+    // Turtle AI: find closest reachable platform above
     if (!turtle.exhausted) {
         let next = null;
+        let bestDist = Infinity;
+
         for (let p of platforms) {
             if (p.y < turtle.y) {
-                next = p;
-                break;
+                const dx = Math.abs((turtle.x + turtle.w/2) - (p.x + p.w/2));
+                if (dx < bestDist) {
+                    bestDist = dx;
+                    next = p;
+                }
             }
         }
 
         if (next) {
             if (turtle.x + turtle.w / 2 < next.x + next.w / 2) {
-                turtle.x += 2;
+                turtle.x += 3;
             } else {
-                turtle.x -= 2;
+                turtle.x -= 3;
             }
         }
     }
@@ -238,13 +244,15 @@ function update() {
     });
 
     // WIN / LOSE CONDITIONS
-    if (player.y < -2000) {
+    const topPlatformY = platforms[platforms.length - 1].y;
+
+    if (player.y < topPlatformY - 200) {
         winSound.play();
         alert("You reached the top!");
         resetGame();
     }
 
-    if (turtle.y < -2000 && !turtle.exhausted) {
+    if (turtle.y < topPlatformY - 200 && !turtle.exhausted) {
         loseSound.play();
         retryCount++;
         alert("The turtle won the race!");
