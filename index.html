@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Climber Race</title>
+  <style>
+    body { margin:0; background:#000; }
+    canvas { display:block; margin:auto; background:#222; }
+
+    #menu {
+      text-align:center;
+      margin-top:20px;
+      color:white;
+      font-family:Arial, sans-serif;
+    }
+
+    button {
+      padding:10px 20px;
+      font-size:20px;
+      margin:5px;
+      border-radius:10px;
+      border:none;
+      background:#ffdd55;
+      font-weight:bold;
+      cursor:pointer;
+    }
+
+    #mobileControls {
+      position:fixed;
+      bottom:20px;
+      left:50%;
+      transform:translateX(-50%);
+      display:flex;
+      gap:20px;
+    }
+
+    #mobileControls button {
+      padding:15px 25px;
+      font-size:22px;
+      border-radius:15px;
+      background:#ffdd55;
+      border:none;
+      font-weight:bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="menu">
+  <h1>Choose Your Character</h1>
+  <button onclick="startGame('boy')">Boy</button>
+  <button onclick="startGame('girl')">Girl</button>
+</div>
+
+<canvas id="gameCanvas" width="500" height="700"></canvas>
+
+<div id="mobileControls">
+  <button id="leftBtn">◀</button>
+  <button id="rightBtn">▶</button>
+</div>
+
+<script src="game.js"></script>
+
+</body>
+</html>
