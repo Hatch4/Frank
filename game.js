@@ -5,7 +5,7 @@ let player, turtle, platforms = [], powerUps = [];
 let retryCount = 0;
 let gameRunning = false;
 let cameraY = 0;
-let gameStartedClimbing = false; // prevents instant win
+let gameStartedClimbing = false;
 
 // === IMAGES ===
 const bgImg = new Image(); bgImg.src = "background.png";
@@ -21,18 +21,16 @@ const winSound = new Audio("win.wav");
 const loseSound = new Audio("lose.wav");
 const powerSound = new Audio("power.wav");
 
-// === CONTROL FLAGS ===
+// === CONTROLS ===
 let leftPressed = false;
 let rightPressed = false;
 
-// === MOBILE CONTROLS ===
 document.getElementById("leftBtn").addEventListener("touchstart", () => leftPressed = true);
 document.getElementById("leftBtn").addEventListener("touchend", () => leftPressed = false);
 
 document.getElementById("rightBtn").addEventListener("touchstart", () => rightPressed = true);
 document.getElementById("rightBtn").addEventListener("touchend", () => rightPressed = false);
 
-// === KEYBOARD CONTROLS ===
 document.addEventListener("keydown", e => {
     if (e.key === "ArrowLeft") leftPressed = true;
     if (e.key === "ArrowRight") rightPressed = true;
@@ -50,7 +48,7 @@ function startGame(character) {
     requestAnimationFrame(gameLoop);
 }
 
-// === INITIALIZE GAME ===
+// === INITIALIZE ===
 function init(character) {
     gameStartedClimbing = false;
 
@@ -76,21 +74,16 @@ function init(character) {
         exhausted: retryCount >= 5,
         collapseAngle: 0,
         grounded: false,
-        targetIndex: 1 // first platform above ground
+        targetPlatform: null
     };
 
     generatePlatforms();
     generatePowerUps();
 }
 
-// === TURTLE DIFFICULTY ===
+// === TURTLE SPEED ===
 function getTurtleSpeed() {
-    if (retryCount === 0) return 4;
-    if (retryCount === 1) return 3.5;
-    if (retryCount === 2) return 3;
-    if (retryCount === 3) return 2.5;
-    if (retryCount === 4) return 2;
-    return 1;
+    return Math.max(1, 4 - retryCount * 0.5);
 }
 
 // === PLATFORM GENERATION ===
@@ -106,24 +99,29 @@ function generatePlatforms() {
         x += (Math.random() * maxShift * 2) - maxShift;
         x = Math.max(20, Math.min(380, x));
 
-        platforms.push({
-            x: x,
-            y: y,
-            w: 100,
-            h: 20
-        });
-
+        platforms.push({ x, y, w: 100, h: 20 });
         y -= stepY;
     }
 
-    // Ground platform
-    platforms.push({ x: 0, y: 690, w: 500, h: 20 });
-
-    // Reverse so index 0 = ground, last = top
-    platforms.reverse();
+    platforms.push({ x: 0, y: 690, w: 500, h: 20 }); // ground
 }
 
-// === POWER-UP GENERATION ===
+// === FIND TRUE TOP PLATFORM ===
+function getTopPlatform() {
+    return platforms.reduce((highest, p) => p.y < highest.y ? p : highest);
+}
+
+// === FIND NEXT PLATFORM ABOVE TURTLE ===
+function getNextPlatformAbove(turtleY) {
+    let above = platforms.filter(p => p.y < turtleY - 10);
+    if (above.length === 0) return null;
+
+    return above.reduce((closest, p) =>
+        p.y > closest.y ? p : closest
+    );
+}
+
+// === POWER-UPS ===
 function generatePowerUps() {
     powerUps = [];
 
@@ -137,7 +135,7 @@ function generatePowerUps() {
     }
 }
 
-// === MAIN GAME LOOP ===
+// === GAME LOOP ===
 function gameLoop() {
     if (!gameRunning) return;
     update();
@@ -145,7 +143,7 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// === UPDATE LOGIC ===
+// === UPDATE ===
 function update() {
 
     // Gravity
@@ -155,16 +153,16 @@ function update() {
     turtle.vy += 0.5;
     turtle.y += turtle.vy;
 
-    // Start win checks only after climbing begins
+    // Start climbing check
     if (!gameStartedClimbing && player.y < 500) {
         gameStartedClimbing = true;
     }
 
-    // Camera follows player
+    // Camera
     cameraY = player.y - 300;
     if (cameraY < 0) cameraY = 0;
 
-    // Player directional jump
+    // Player movement
     if (player.grounded) {
         if (leftPressed) {
             player.vy = player.jumpPower;
@@ -179,23 +177,21 @@ function update() {
     }
 
     // Turtle AI
-    let next = platforms[turtle.targetIndex];
+    if (!turtle.exhausted) {
+        if (!turtle.targetPlatform) {
+            turtle.targetPlatform = getNextPlatformAbove(turtle.y);
+        }
 
-    if (!turtle.exhausted && next) {
-        const center = next.x + next.w / 2;
-        const tCenter = turtle.x + turtle.w / 2;
+        if (turtle.targetPlatform) {
+            const center = turtle.targetPlatform.x + turtle.targetPlatform.w / 2;
+            const tCenter = turtle.x + turtle.w / 2;
 
-        if (tCenter < center) turtle.x += turtle.speed;
-        else turtle.x -= turtle.speed;
-    }
+            if (tCenter < center) turtle.x += turtle.speed;
+            else turtle.x -= turtle.speed;
 
-    // Turtle jump when centered
-    if (turtle.grounded && next) {
-        const center = next.x + next.w / 2;
-        const tCenter = turtle.x + turtle.w / 2;
-
-        if (Math.abs(center - tCenter) < 20) {
-            turtle.vy = turtle.jumpPower;
+            if (Math.abs(center - tCenter) < 20 && turtle.grounded) {
+                turtle.vy = turtle.jumpPower;
+            }
         }
     }
 
@@ -220,23 +216,20 @@ function update() {
     // PLATFORM COLLISION (TURTLE)
     turtle.grounded = false;
 
-    platforms.forEach((p, index) => {
-        const turtleOnPlatform =
+    platforms.forEach(p => {
+        const onPlatform =
             turtle.x + turtle.w > p.x &&
             turtle.x < p.x + p.w &&
             turtle.y + turtle.h >= p.y &&
             turtle.y + turtle.h <= p.y + 10 &&
             turtle.vy >= 0;
 
-        if (turtleOnPlatform) {
+        if (onPlatform) {
             turtle.y = p.y - turtle.h;
             turtle.vy = 0;
             turtle.grounded = true;
 
-            // Move UP the staircase
-            if (index < platforms.length - 1) {
-                turtle.targetIndex = index + 1;
-            }
+            turtle.targetPlatform = getNextPlatformAbove(turtle.y);
         }
     });
 
@@ -255,7 +248,7 @@ function update() {
     });
 
     // WIN / LOSE CONDITIONS
-    const topPlatform = platforms[platforms.length - 1]; // TRUE TOP
+    const topPlatform = getTopPlatform();
 
     if (gameStartedClimbing && player.y < topPlatform.y + 50) {
         winSound.play();
@@ -278,13 +271,13 @@ function update() {
     }
 }
 
-// === RESET GAME ===
+// === RESET ===
 function resetGame() {
     gameRunning = false;
     document.getElementById("menu").style.display = "block";
 }
 
-// === DRAW EVERYTHING ===
+// === DRAW ===
 function draw() {
     ctx.drawImage(bgImg, 0, -cameraY, canvas.width, canvas.height);
 
@@ -292,8 +285,8 @@ function draw() {
     ctx.fillStyle = "#8B4513";
     platforms.forEach(p => ctx.fillRect(p.x, p.y - cameraY, p.w, p.h));
 
-    // ⭐ FLAG AT TRUE TOP PLATFORM
-    const top = platforms[platforms.length - 1];
+    // FLAG AT TRUE TOP
+    const top = getTopPlatform();
     ctx.drawImage(flagImg, top.x + 20, top.y - cameraY - 60, 60, 60);
 
     // Power-ups
