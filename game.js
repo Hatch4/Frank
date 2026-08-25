@@ -258,24 +258,24 @@ function update() {
     });
 
     // === FIXED WIN CONDITION (SCREEN-RELATIVE) ===
-    const topPlatform = getTopPlatform();
-    const playerScreenY = player.y - cameraY;
-    const topScreenY = topPlatform.y - cameraY;
+const topPlatform = getTopPlatform();
+const playerScreenY = player.y - cameraY;
+const topScreenY = topPlatform.y - cameraY;
 
-    if (gameStartedClimbing && playerScreenY < topScreenY + 50) {
-        winSound.play();
-        alert("You reached the top!");
-        resetGame();
-    }
+if (gameStartedClimbing && playerScreenY < topScreenY + 50) {
+    winSound.play();
+    alert("You reached the top!");
+    resetGame();
+}
 
-    // TURTLE WIN
-    const turtleScreenY = turtle.y - cameraY;
-    if (gameStartedClimbing && turtleScreenY < topScreenY + 50 && !turtle.exhausted) {
-        loseSound.play();
-        retryCount++;
-        alert("The turtle won the race!");
-        resetGame();
-    }
+// TURTLE WIN
+const turtleScreenY = turtle.y - cameraY;
+if (gameStartedClimbing && turtleScreenY < topScreenY + 50 && !turtle.exhausted) {
+    loseSound.play();
+    retryCount++;
+    alert("The turtle won the race!");
+    resetGame();
+}
 
     // FALL LOSE
     if (player.y > 700) {
